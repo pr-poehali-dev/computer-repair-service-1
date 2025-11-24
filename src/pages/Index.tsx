@@ -6,6 +6,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import Icon from '@/components/ui/icon';
 import { useToast } from '@/hooks/use-toast';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import Autoplay from 'embla-carousel-autoplay';
 
 const services = [
   {
@@ -105,15 +110,41 @@ const reviews = [
 
 export default function Index() {
   const [formData, setFormData] = useState({ name: '', phone: '', message: '' });
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [calculatorData, setCalculatorData] = useState({
+    deviceType: '',
+    problem: '',
+    urgency: ''
+  });
+  const [estimatedPrice, setEstimatedPrice] = useState(0);
   const { toast } = useToast();
+  
+  const calculatePrice = () => {
+    let basePrice = 0;
+    
+    if (calculatorData.deviceType === 'desktop') basePrice = 1500;
+    if (calculatorData.deviceType === 'laptop') basePrice = 2000;
+    if (calculatorData.deviceType === 'monoblock') basePrice = 2500;
+    
+    if (calculatorData.problem === 'diagnosis') basePrice = 0;
+    if (calculatorData.problem === 'cleaning') basePrice += 800;
+    if (calculatorData.problem === 'motherboard') basePrice += 3000;
+    if (calculatorData.problem === 'components') basePrice += 2000;
+    if (calculatorData.problem === 'software') basePrice += 1000;
+    
+    if (calculatorData.urgency === 'urgent') basePrice *= 1.5;
+    
+    setEstimatedPrice(basePrice);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     toast({
       title: 'Заявка отправлена!',
-      description: 'Мы свяжемся с вами в ближайшее время'
+      description: 'Мы свяжемся с вами в течение 15 минут'
     });
     setFormData({ name: '', phone: '', message: '' });
+    setIsDialogOpen(false);
   };
 
   return (
@@ -149,14 +180,153 @@ export default function Index() {
                 Оперативно, качественно, доступно! Бесплатная диагностика и гарантия на все работы.
               </p>
               <div className="flex flex-wrap gap-4">
-                <Button size="lg" className="text-lg animate-scale-in">
-                  <Icon name="MessageCircle" size={20} className="mr-2" />
-                  Оставить заявку
-                </Button>
-                <Button size="lg" variant="outline" className="text-lg">
-                  <Icon name="Calculator" size={20} className="mr-2" />
-                  Узнать цену
-                </Button>
+                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="lg" className="text-lg animate-scale-in">
+                      <Icon name="MessageCircle" size={20} className="mr-2" />
+                      Оставить заявку
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Оставить заявку</DialogTitle>
+                      <DialogDescription>
+                        Заполните форму и мы свяжемся с вами в течение 15 минут
+                      </DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                      <div>
+                        <Label htmlFor="name">Ваше имя</Label>
+                        <Input
+                          id="name"
+                          value={formData.name}
+                          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                          placeholder="Иван Иванов"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="phone">Телефон</Label>
+                        <Input
+                          id="phone"
+                          value={formData.phone}
+                          onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                          placeholder="+7 (___) ___-__-__"
+                          type="tel"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="message">Опишите проблему</Label>
+                        <Textarea
+                          id="message"
+                          value={formData.message}
+                          onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                          placeholder="Например: не включается компьютер..."
+                          rows={3}
+                          required
+                        />
+                      </div>
+                      <Button type="submit" className="w-full">
+                        <Icon name="Send" size={20} className="mr-2" />
+                        Отправить заявку
+                      </Button>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+                
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button size="lg" variant="outline" className="text-lg">
+                      <Icon name="Calculator" size={20} className="mr-2" />
+                      Узнать цену
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-lg">
+                    <DialogHeader>
+                      <DialogTitle>Калькулятор стоимости</DialogTitle>
+                      <DialogDescription>
+                        Рассчитайте примерную стоимость ремонта
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div>
+                        <Label>Тип устройства</Label>
+                        <Select
+                          value={calculatorData.deviceType}
+                          onValueChange={(value) => setCalculatorData({ ...calculatorData, deviceType: value })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Выберите устройство" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="desktop">Стационарный ПК</SelectItem>
+                            <SelectItem value="laptop">Ноутбук</SelectItem>
+                            <SelectItem value="monoblock">Моноблок</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <div>
+                        <Label>Тип проблемы</Label>
+                        <Select
+                          value={calculatorData.problem}
+                          onValueChange={(value) => setCalculatorData({ ...calculatorData, problem: value })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Выберите проблему" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="diagnosis">Диагностика (бесплатно)</SelectItem>
+                            <SelectItem value="cleaning">Чистка и замена термопасты</SelectItem>
+                            <SelectItem value="motherboard">Ремонт материнской платы</SelectItem>
+                            <SelectItem value="components">Замена комплектующих</SelectItem>
+                            <SelectItem value="software">Установка ПО</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <div>
+                        <Label>Срочность</Label>
+                        <Select
+                          value={calculatorData.urgency}
+                          onValueChange={(value) => setCalculatorData({ ...calculatorData, urgency: value })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Выберите срочность" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="normal">Обычный режим (2-3 дня)</SelectItem>
+                            <SelectItem value="urgent">Срочный ремонт (24 часа, +50%)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <Button 
+                        onClick={calculatePrice} 
+                        className="w-full"
+                        disabled={!calculatorData.deviceType || !calculatorData.problem || !calculatorData.urgency}
+                      >
+                        <Icon name="Calculator" size={20} className="mr-2" />
+                        Рассчитать стоимость
+                      </Button>
+                      
+                      {estimatedPrice > 0 && (
+                        <div className="mt-4 p-4 bg-gradient-to-r from-primary/10 to-secondary/10 rounded-lg">
+                          <div className="text-center">
+                            <p className="text-sm text-muted-foreground mb-2">Примерная стоимость:</p>
+                            <p className="text-3xl font-bold text-primary">
+                              {estimatedPrice === 0 ? 'Бесплатно' : `от ${estimatedPrice}₽`}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-2">
+                              * Точная цена определяется после диагностики
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </DialogContent>
+                </Dialog>
               </div>
               <div className="mt-8 flex gap-8">
                 <div>
@@ -339,23 +509,40 @@ export default function Index() {
           <p className="text-center text-muted-foreground mb-12 text-lg">
             Более 1000 довольных клиентов доверяют нам свою технику
           </p>
-          <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
-            {reviews.map((review, index) => (
-              <Card key={index} className="hover:shadow-xl transition-shadow">
-                <CardHeader>
-                  <div className="flex items-center gap-2 mb-2">
-                    {[...Array(review.rating)].map((_, i) => (
-                      <Icon key={i} name="Star" className="text-yellow-500 fill-yellow-500" size={18} />
-                    ))}
-                  </div>
-                  <CardTitle className="text-lg">{review.name}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground">{review.text}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+          <Carousel
+            opts={{
+              align: "start",
+              loop: true,
+            }}
+            plugins={[
+              Autoplay({
+                delay: 4000,
+              }),
+            ]}
+            className="max-w-6xl mx-auto"
+          >
+            <CarouselContent>
+              {reviews.map((review, index) => (
+                <CarouselItem key={index} className="md:basis-1/2 lg:basis-1/3">
+                  <Card className="hover:shadow-xl transition-shadow h-full">
+                    <CardHeader>
+                      <div className="flex items-center gap-2 mb-2">
+                        {[...Array(review.rating)].map((_, i) => (
+                          <Icon key={i} name="Star" className="text-yellow-500 fill-yellow-500" size={18} />
+                        ))}
+                      </div>
+                      <CardTitle className="text-lg">{review.name}</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-muted-foreground">{review.text}</p>
+                    </CardContent>
+                  </Card>
+                </CarouselItem>
+              ))}
+            </CarouselContent>
+            <CarouselPrevious className="hidden md:flex" />
+            <CarouselNext className="hidden md:flex" />
+          </Carousel>
         </div>
       </section>
 
